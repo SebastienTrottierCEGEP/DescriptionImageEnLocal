@@ -3,7 +3,7 @@ set -euo pipefail
 
 echo "=========================================="
 echo "  Configuration de l'environnement WSL    "
-echo "  Strands Agent SDK + Ollama (llama3.1)  "
+echo "  Strands Agent SDK + Ollama "
 echo "=========================================="
 
 # 1. Vérification et configuration du support GPU NVIDIA (CUDA pour WSL2)
