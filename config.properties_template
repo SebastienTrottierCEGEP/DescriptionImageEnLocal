@@ -4,8 +4,9 @@
 
 # Nom du modèle Ollama à utiliser
 # Modèles doivent supporter le "vision"
-# 12GB VRAM: llama3.2-vision:11b
-model_id=llama3.2-vision:11b
+# 8GB llava:7b
+# 12GB VRAM: llama3.2-vision:11b -> error loading model: unknown model architecture: 'mllama' (avec ollama 0.40.3)
+model_id=llava:7b
 
 # URL de l'hôte Ollama (par défaut en local)
 host=http://localhost:11434

@@ -105,14 +105,41 @@ else
     echo "✔ Outils système requis présents."
 fi
 
-# 3. Vérification / Installation de Ollama
+# 3. Vérification / Installation / Mise à jour de Ollama
 echo ""
-echo "[3/5] Vérification d'Ollama..."
+echo "[3/5] Vérification de l'état et de la version d'Ollama..."
 if ! command -v ollama &> /dev/null; then
     echo "Installation d'Ollama via le script officiel..."
     curl -fsSL https://ollama.com/install.sh | sh
 else
-    echo "✔ Ollama est déjà installé : $(ollama --version)"
+    # Récupération de la version locale
+    CURRENT_RAW=$(ollama --version 2>/dev/null || true)
+    CURRENT_VER=$(echo "$CURRENT_RAW" | awk '{print $NF}' | sed 's/^v//')
+
+    echo "   • Version actuellement installée : v${CURRENT_VER:-inconnue}"
+
+    # Vérification en ligne de la dernière version officielle sur GitHub
+    echo "   • Interrogation de la dernière version officielle..."
+    LATEST_TAG=$(curl -s --connect-timeout 3 --max-time 5 "https://api.github.com/repos/ollama/ollama/releases/latest" 2>/dev/null | grep -E '"tag_name":' | head -n 1 | cut -d'"' -f4 || true)
+    LATEST_VER="${LATEST_TAG#v}"
+
+    if [ -n "$LATEST_VER" ]; then
+        echo "   • Dernière version publiée        : v$LATEST_VER"
+        if [ "$CURRENT_VER" = "$LATEST_VER" ]; then
+            echo "✔ Ollama est déjà à jour (v$CURRENT_VER)."
+        else
+            echo "⚠ Une version plus récente est disponible (v$CURRENT_VER -> v$LATEST_VER)."
+            echo "Mise à jour d'Ollama en cours..."
+            curl -fsSL https://ollama.com/install.sh | sh
+            if command -v systemctl &> /dev/null && systemctl is-system-running &> /dev/null; then
+                sudo systemctl daemon-reload 2>/dev/null || true
+                sudo systemctl restart ollama 2>/dev/null || true
+            fi
+            echo "✔ Ollama mis à jour : $(ollama --version)"
+        fi
+    else
+        echo "ℹ Vérification en ligne impossible (pas d'accès GitHub). Version locale conservée."
+    fi
 fi
 
 # 4. Préparation de l'environnement virtuel Python
@@ -128,15 +155,15 @@ fi
 
 source .venv/bin/activate
 pip install --upgrade pip --quiet
-echo "Installation de strands-agents[ollama]..."
-pip install 'strands-agents[ollama]' --quiet
+echo "Installation de strands-agents[ollama] et pillow..."
+pip install 'strands-agents[ollama]' pillow --quiet
 echo "✔ Dépendances Python installées avec succès."
 
 # 5. Démarrage du serveur Ollama et attente
 echo ""
 echo "[5/5] Vérification et démarrage du service Ollama..."
 is_ollama_running() {
-    curl -s -f "http://localhost:11434" &> /dev/null
+    curl -s -f --connect-timeout 2 --max-time 3 "http://localhost:11434" &> /dev/null
 }
 
 if is_ollama_running; then
